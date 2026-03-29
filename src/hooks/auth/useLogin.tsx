@@ -1,6 +1,6 @@
 import { useMutation, UseMutationResult } from "@tanstack/react-query";
-import { LoginPayload, loginRequest, LoginResponse } from "../api/auth.api";
-import { ApiResponse } from "../lib/api";
+import { LoginPayload, loginRequest, LoginResponse } from "../../api/auth.api";
+import { ApiResponse } from "../../lib/api";
 
 export const useLogin = (): UseMutationResult<
     ApiResponse<LoginResponse>,

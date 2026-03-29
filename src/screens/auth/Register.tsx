@@ -13,11 +13,14 @@ import {
     Eye, EyeOff, Lock, Mail, UserRound,
 
 } from 'lucide-react-native';
-import { useNavigate } from '../../hooks/useNavigate';
+import { useSignUp } from '../../hooks/auth/useSignUp';
+import { log } from '../../lib/logger';
+import { storage } from '../../lib/storage';
+import { navigate } from '../../navigations/navigationRef';
 const { width, height } = Dimensions.get('window');
 
 
-export default function SignUp() {
+export default function Register() {
     const [prenom, setPrenom] = useState('');
     const [nom, setNom] = useState('');
     const [email, setEmail] = useState('');
@@ -26,32 +29,29 @@ export default function SignUp() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    //const { login } = useAuth();
-    //const { mutate } = useLogin();
-    const navigation = useNavigate()
-    const handleSubmit = () => { }
-    /* const payload = {
-        nom,
-        prenom,
-        email,
-        password,
-        confirmPassword,
-        role: 'CLIENT',
-        ...(phone && { phone }),
-        ...(cin && { cin }),
-        ...(birthDate && { birthDate }),
-        ...(gender && { gender }),
-        ...(address && { address }),
-    };
+    const { mutate } = useSignUp();
+    const handleSubmit = () => {
+        const payload = {
+            nom,
+            prenom,
+            email,
+            password,
+            confirmPassword,
+            role: 'CLIENT',
+        };
 
-    log.info(payload);
-    mutate(payload, {
-        onSuccess: (data) => {
-            login(data.data.accessToken, data.data.refreshToken);
-        },
-        onError: (err) => log.error(err.message),
-    });
-}; */
+        log.info(payload);
+        mutate(payload, {
+            onSuccess: ({ data }) => {
+                storage.set('id', data.id);
+                storage.set('nom', nom);
+                storage.set('prenom', prenom);
+                storage.set('email', email);
+                navigate("Verify")
+            },
+            onError: (err) => log.error(err.message),
+        });
+    };
 
     return (
         <ScrollView
@@ -180,7 +180,7 @@ export default function SignUp() {
                 {/* ── Login link ── */}
                 <View style={styles.registerRow}>
                     <Text style={styles.registerText}>Déjà un compte ? </Text>
-                    <TouchableOpacity onPress={() => navigation.navigate("login")} >
+                    <TouchableOpacity onPress={() => navigate("Verify")} >
                         <Text style={styles.registerLink}>Se connecter</Text>
                     </TouchableOpacity>
                 </View>

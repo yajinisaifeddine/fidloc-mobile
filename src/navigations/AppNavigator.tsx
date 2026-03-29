@@ -1,7 +1,7 @@
 import React from 'react'
 import { NavigationContainer } from '@react-navigation/native'
-import { navigationRef } from '../hooks/useNavigate'
 import NavigatorRoutes from './NavigatorRoutes'
+import { navigationRef } from './navigationRef'
 
 const AppNavigator = () => {
     return <NavigationContainer ref={navigationRef}>

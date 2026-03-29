@@ -10,11 +10,12 @@ import {
 } from 'react-native';
 import { useState, } from 'react';
 import { Eye, EyeOff, Lock, User } from 'lucide-react-native';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../hooks/auth/useAuth';
 import { log } from '../../lib/logger';
-import { useLogin } from '../../hooks/useLogin';
-import { useNavigate } from '../../hooks/useNavigate';
+import { useLogin } from '../../hooks/auth/useLogin';
 import ThemedText from '../../components/ui/ThemedText';
+import { navigate } from '../../navigations/navigationRef';
+import { storage } from '../../lib/storage';
 
 
 
@@ -29,8 +30,9 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const { login } = useAuth()
     const { mutate } = useLogin()
-    const navigation = useNavigate()
-
+    const keys = storage.getAllKeys();
+    const all = Object.fromEntries(keys.map(key => [key, storage.getString(key)]));
+    log.debug('[Storage] All keys: ' + JSON.stringify(all, null, 2));
 
     const handleSubmi = (e: React.SubmitEvent) => {
         e.preventDefault()
@@ -136,7 +138,7 @@ export default function Login() {
                 {/* Register */}
                 <View style={styles.registerRow}>
                     <Text style={styles.registerText}>Pas encore de compte ? </Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('sign-up')}>
+                    <TouchableOpacity onPress={() => navigate("Register")}>
                         <Text style={styles.registerLink}>Créer un compte</Text>
                     </TouchableOpacity>
                 </View>

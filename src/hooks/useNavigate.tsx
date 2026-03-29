@@ -1,11 +1,14 @@
-import { createNavigationContainerRef, ParamListBase, useNavigation as useNativeNavigation } from '@react-navigation/native';
+import {
+    NavigationProp,
+    useNavigation as useNativeNavigation,
+    RouteProp,
+} from '@react-navigation/native';
+import { RootStackParamList } from '../navigations/types';
+export const useNavigate = () =>
+    useNativeNavigation<NavigationProp<RootStackParamList>>();
 
-export const navigationRef = createNavigationContainerRef<ParamListBase>();
-
-export function navigate(name: string, params?: object) {
-    if (navigationRef.isReady()) {
-        (navigationRef as any).navigate(name, params);
-    }
-}
-
-export const useNavigate = () => useNativeNavigation<any>();
+// Typed route hook for reading params inside a screen
+export type UseRoute<Screen extends keyof RootStackParamList> = RouteProp<
+    RootStackParamList,
+    Screen
+>;
