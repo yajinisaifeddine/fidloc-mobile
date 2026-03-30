@@ -26,6 +26,22 @@ export interface VerifyPayload {
   userId: string;
   token: string;
 }
+export interface ResendPayload {
+  email: string;
+}
+export interface RequestResetPayload {
+  email: string;
+}
+export interface VerifyResetPayload {
+  email: string;
+  token: string;
+}
+export interface FinalizeResetPayload {
+  email: string;
+  token: string;
+  password: string;
+}
+
 export const loginRequest = async (
   payload: LoginPayload,
 ): Promise<ApiResponse<LoginResponse>> => {
@@ -49,3 +65,27 @@ export const verifyRequest = async (
   const { data } = await apiClient.post('/auth/verify', payload);
   return data;
 };
+
+// api/auth.ts
+export const requestResetRequest = (
+  payload: RequestResetPayload,
+): Promise<ApiResponse> =>
+  apiClient
+    .post<ApiResponse>('/auth/password-reset/request', payload)
+    .then(r => r.data);
+
+export const verifyResetRequest = (
+  payload: VerifyResetPayload,
+): Promise<ApiResponse> =>
+  apiClient
+    .post<ApiResponse>('/auth/password-reset/verify', payload)
+    .then(r => r.data);
+
+export const finalizeResetRequest = (
+  payload: FinalizeResetPayload,
+): Promise<ApiResponse> =>
+  apiClient
+    .post<ApiResponse>('/auth/password-reset/finalise', payload)
+    .then(r => r.data);
+export const resendRequest = (payload: ResendPayload): Promise<ApiResponse> =>
+  apiClient.post<ApiResponse>('/auth/resend', payload).then(r => r.data);

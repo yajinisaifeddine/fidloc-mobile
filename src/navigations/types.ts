@@ -3,6 +3,13 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Home: undefined;
-  Verify: undefined;
-  // ... add all your screens
+  Verify: { email: string; isResetPassword: boolean };
+  ResetPassword: undefined;
+  NewPassword: { email: string; token: string };
 };
+
+declare global {
+  namespace ReactNavigation {
+    interface RootParamList extends RootStackParamList {}
+  }
+}

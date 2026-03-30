@@ -6,6 +6,8 @@ import Verify from '../screens/auth/Verify'
 import Home from '../screens/Home'
 import { useAuth } from '../hooks/auth/useAuth'
 import SplashScreen from '../screens/SplashScreen'
+import ResetPassword from '../screens/auth/ResetPassword'
+import NewPassword from '../screens/auth/NewPassword'
 
 
 const NavigatorRoutes = () => {
@@ -23,7 +25,8 @@ const NavigatorRoutes = () => {
 
         <Stack.Screen name='Register' component={Register} />
         <Stack.Screen name='Verify' component={Verify} />
-
+        <Stack.Screen name='ResetPassword' component={ResetPassword} />
+        <Stack.Screen name='NewPassword' component={NewPassword} />
     </Stack.Navigator>
 }
 

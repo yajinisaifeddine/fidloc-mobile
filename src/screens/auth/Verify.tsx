@@ -4,56 +4,67 @@ import {
     Text,
     TouchableOpacity,
     StyleSheet,
-    ScrollView,
-    Image,
-    Alert,
     Dimensions,
 } from 'react-native';
-import { goBack } from '../../navigations/navigationRef';
+import { goBack, navigate } from '../../navigations/navigationRef';
 import { storage } from '../../lib/storage';
-import { useVerify } from '../../hooks/auth/useVerify';
 import { log } from '../../lib/logger';
 import { OtpInput } from 'react-native-otp-entry';
+import { useResend, useVerify, useVerifyReset } from '../../hooks/auth/useAuthenticate';
+import { RootStackParamList } from '../../navigations/types';
+import { useAuth } from '../../hooks/auth/useAuth';
 const { width, height } = Dimensions.get("window")
+import { RouteProp, useRoute } from '@react-navigation/native';
+import AuthLayout from '../../layout/AuthLayout';
+
+type VerifyRouteProp = RouteProp<RootStackParamList, 'Verify'>;
 
 const Verify = () => {
+    const route = useRoute<VerifyRouteProp>()
+    const { email, isResetPassword } = route.params;
+
+    log.debug(email, isResetPassword)
     const [token, setToken] = useState<string>("");
 
-    const { mutate } = useVerify()
-
-
-
-
-    const handleVerify = () => {
-        const userId = storage.getString("id")
-        if (!userId) return;
-        if (!(token.length === 6)) return;
-        mutate({ token, userId }, {
-            onSuccess: ({ data }) => log.info(data),
-            onError: (err) => log.error(err)
-        })
-
-    };
-
+    const { mutate: verifyAccount } = useVerify()
+    const { login } = useAuth()
+    const { mutate: resetPassword } = useVerifyReset()
+    const { mutate: resendToken } = useResend()
     const handleResend = () => {
-        Alert.alert('Code renvoyé', 'Un nouveau code a été envoyé à votre adresse');
-    };
+        resendToken({ email })
+    }
+    const handleVerify = () => {
+
+        if (!(token.length === 6)) return;
+        if (isResetPassword) {
+
+            resetPassword({ email, token }, {
+
+                onSuccess: (data) => {
+                    navigate("NewPassword", { email, token })
+                    log.debug(data.msg)
+                }
+            })
+        } else {
+            const userId = storage.getString("id")
+            if (!userId) return;
+            verifyAccount({ token, userId }, {
+                onSuccess: ({ data }) => {
+                    login(data.accessToken, data.refreshToken)
+                    navigate("Home")
+                },
+                onError: (err) => log.error(err)
+            })
+        }
+
+    }
+
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            {/* Logo */}
-            <Image
-                source={require('./../../assets/images/app-logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-            />
-
-            {/* Title */}
-            <Text style={styles.title}>Vérification</Text>
-
-            {/* Subtitle */}
-            <Text style={styles.subtitle}>Entrez le code de vérification</Text>
-
+        <AuthLayout
+            title='Vérification'
+            subTitle='Entrez le code de vérification'
+        >
             {/* Input Fields */}
             <OtpInput
                 numberOfDigits={6}
@@ -101,7 +112,7 @@ const Verify = () => {
             >
                 <Text style={styles.buttonText}>Vérifier</Text>
             </TouchableOpacity>
-        </ScrollView>
+        </AuthLayout >
     );
 };
 const styles = StyleSheet.create({

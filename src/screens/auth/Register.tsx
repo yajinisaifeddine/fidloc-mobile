@@ -4,168 +4,185 @@ import {
     TextInput,
     TouchableOpacity,
     Image,
-    StyleSheet,
-    ScrollView,
     Dimensions,
+    StyleSheet,
 } from 'react-native';
 import { useState } from 'react';
 import {
     Eye, EyeOff, Lock, Mail, UserRound,
-
 } from 'lucide-react-native';
-import { useSignUp } from '../../hooks/auth/useSignUp';
 import { log } from '../../lib/logger';
 import { storage } from '../../lib/storage';
 import { navigate } from '../../navigations/navigationRef';
+import { CreateUserSchema } from '../../types';
+import { useSignUp } from '../../hooks/auth/useAuthenticate';
+import AuthLayout from '../../layout/AuthLayout';
+
 const { width, height } = Dimensions.get('window');
 
 
 export default function Register() {
-    const [prenom, setPrenom] = useState('');
-    const [nom, setNom] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    const [formData, setFormData] = useState({
+        prenom: '',
+        nom: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+    });
+
     const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const { mutate } = useSignUp();
+
+    const handleChange = (name: string, value: string) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
+    };
+
     const handleSubmit = () => {
         const payload = {
-            nom,
-            prenom,
-            email,
-            password,
-            confirmPassword,
+            ...formData,
             role: 'CLIENT',
         };
 
-        log.info(payload);
-        mutate(payload, {
+        const result = CreateUserSchema.safeParse(payload);
+
+        if (!result.success) {
+            const formattedErrors: Record<string, string> = {};
+            result.error.issues.forEach((issue) => {
+                const path = issue.path[0] as string;
+                formattedErrors[path] = issue.message;
+            });
+            setErrors(formattedErrors);
+            return;
+        }
+
+        setErrors({});
+        log.info('Validated Signup Payload:', result.data);
+
+        mutate(result.data, {
             onSuccess: ({ data }) => {
                 storage.set('id', data.id);
-                storage.set('nom', nom);
-                storage.set('prenom', prenom);
-                storage.set('email', email);
-                navigate("Verify")
+                storage.set('nom', formData.nom);
+                storage.set('prenom', formData.prenom);
+                storage.set('email', formData.email);
+                navigate('Verify', { email: formData.email, isResetPassword: false });
             },
-            onError: (err) => log.error(err.message),
+            onError: (err) => {
+                log.error(err.message);
+                setErrors({ email: err.message });
+            },
         });
     };
 
     return (
-        <ScrollView
-            contentContainerStyle={styles.container}
-            keyboardShouldPersistTaps="handled">
-
-            <Image
-                source={require('./../../assets/images/app-logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-            />
-
-            <Text style={styles.title}>Créer un compte</Text>
-            <Text style={styles.subtitle}>Rejoignez votre espace personnel</Text>
+        <AuthLayout
+            title='Créer un compte'
+            subTitle='Rejoignez votre espace personnel'
+        >
 
             <View style={styles.form}>
 
-                {/* ── Prénom + Nom ── */}
                 <View style={styles.nameRow}>
                     <View style={styles.nameField}>
                         <Text style={styles.label}>Prénom</Text>
-                        <View style={styles.inputWrapper}>
+                        <View style={[styles.inputWrapper, errors.prenom && styles.inputError]}>
                             <UserRound size={18} color={OLIVE} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Votre Prénom"
                                 placeholderTextColor="#aaa"
-                                value={prenom}
-                                onChangeText={setPrenom}
+                                value={formData.prenom}
+                                onChangeText={(val) => handleChange('prenom', val)}
                                 autoCapitalize="words"
                             />
                         </View>
+                        {errors.prenom && <Text style={styles.errorText}>{errors.prenom}</Text>}
                     </View>
 
                     <View style={styles.nameField}>
                         <Text style={styles.label}>Nom</Text>
-                        <View style={styles.inputWrapper}>
+                        <View style={[styles.inputWrapper, errors.nom && styles.inputError]}>
                             <UserRound size={18} color={OLIVE} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Votre Nom"
                                 placeholderTextColor="#aaa"
-                                value={nom}
-                                onChangeText={setNom}
+                                value={formData.nom}
+                                onChangeText={(val) => handleChange('nom', val)}
                                 autoCapitalize="words"
                             />
                         </View>
+                        {errors.nom && <Text style={styles.errorText}>{errors.nom}</Text>}
                     </View>
                 </View>
 
-                {/* ── Email ── */}
                 <Text style={styles.label}>Adresse e-mail</Text>
-                <View style={styles.inputWrapper}>
+                <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
                     <Mail size={18} color={OLIVE} />
                     <TextInput
                         style={styles.input}
                         placeholder="Exemple@email.com"
                         placeholderTextColor="#aaa"
-                        value={email}
-                        onChangeText={setEmail}
+                        value={formData.email}
+                        onChangeText={(val) => handleChange('email', val)}
                         keyboardType="email-address"
                         autoCapitalize="none"
                     />
                 </View>
+                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-
-
-                {/* ── Mot de passe ── */}
                 <Text style={styles.label}>Mot de passe</Text>
-                <View style={styles.inputWrapper}>
+                <View style={[styles.inputWrapper, errors.password && styles.inputError]}>
                     <Lock size={18} color={OLIVE} />
                     <TextInput
                         style={styles.input}
                         placeholder="•••••••••••••••"
                         placeholderTextColor="#aaa"
-                        value={password}
-                        onChangeText={setPassword}
+                        value={formData.password}
+                        onChangeText={(val) => handleChange('password', val)}
                         secureTextEntry={!showPassword}
                     />
                     <TouchableOpacity onPress={() => setShowPassword(p => !p)}>
                         {showPassword ? <EyeOff size={18} color="#aaa" /> : <Eye size={18} color="#aaa" />}
                     </TouchableOpacity>
                 </View>
+                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
-                {/* ── Confirmer le mot de passe ── */}
                 <Text style={styles.label}>Confirmer le mot de passe</Text>
-                <View style={styles.inputWrapper}>
+                <View style={[styles.inputWrapper, errors.confirmPassword && styles.inputError]}>
                     <Lock size={18} color={OLIVE} />
                     <TextInput
                         style={styles.input}
                         placeholder="•••••••••••••••"
                         placeholderTextColor="#aaa"
-                        value={confirmPassword}
-                        onChangeText={setConfirmPassword}
-                        secureTextEntry={!showConfirmPassword}
+                        value={formData.confirmPassword}
+                        onChangeText={(val) => handleChange('confirmPassword', val)}
+                        secureTextEntry={!showPassword}
                     />
-                    <TouchableOpacity onPress={() => setShowConfirmPassword(p => !p)}>
-                        {showConfirmPassword ? <EyeOff size={18} color="#aaa" /> : <Eye size={18} color="#aaa" />}
+                    <TouchableOpacity onPress={() => setShowPassword(p => !p)}>
+                        {showPassword ? <EyeOff size={18} color="#aaa" /> : <Eye size={18} color="#aaa" />}
                     </TouchableOpacity>
                 </View>
+                {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
 
-                {/* ── Submit ── */}
                 <TouchableOpacity style={styles.loginButton} onPress={handleSubmit}>
                     <Text style={styles.loginButtonText}>Créer un compte</Text>
                 </TouchableOpacity>
 
-                {/* ── Divider ── */}
                 <View style={styles.divider}>
                     <View style={styles.dividerLine} />
                     <Text style={styles.dividerText}>ou</Text>
                     <View style={styles.dividerLine} />
                 </View>
 
-                {/* ── Social ── */}
                 <View style={styles.socialRow}>
                     <TouchableOpacity style={styles.socialButton}>
                         <Image source={require('./../../assets/images/icons/google.png')} style={styles.icons} />
@@ -177,23 +194,19 @@ export default function Register() {
                     </TouchableOpacity>
                 </View>
 
-                {/* ── Login link ── */}
                 <View style={styles.registerRow}>
                     <Text style={styles.registerText}>Déjà un compte ? </Text>
-                    <TouchableOpacity onPress={() => navigate("Verify")} >
+                    <TouchableOpacity onPress={() => navigate('Login')}>
                         <Text style={styles.registerLink}>Se connecter</Text>
                     </TouchableOpacity>
                 </View>
 
             </View>
-        </ScrollView>
+        </AuthLayout>
     );
 }
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
-
 const OLIVE = '#7a8c3f';
-
 const styles = StyleSheet.create({
     container: {
         flexGrow: 1,
@@ -217,7 +230,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         borderWidth: 1,
         borderColor: '#ddd',
-        marginBottom: 4,
+        marginBottom: 2,
         paddingHorizontal: 12,
         gap: 8,
     },
@@ -245,4 +258,13 @@ const styles = StyleSheet.create({
     registerRow: { flexDirection: 'row', justifyContent: 'center' },
     registerText: { fontSize: 13, color: '#888' },
     registerLink: { fontSize: 13, fontWeight: '700', color: '#333' },
+    inputError: {
+        borderColor: '#ff4d4d',
+    },
+    errorText: {
+        color: '#ff4d4d',
+        fontSize: 11,
+        marginBottom: 8,
+        marginLeft: 4,
+    },
 });

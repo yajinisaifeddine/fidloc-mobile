@@ -5,152 +5,160 @@ import {
     TouchableOpacity,
     Image,
     StyleSheet,
-    ScrollView,
     Dimensions,
 } from 'react-native';
-import { useState, } from 'react';
-import { Eye, EyeOff, Lock, User } from 'lucide-react-native';
+import { useState } from 'react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useAuth } from '../../hooks/auth/useAuth';
-import { log } from '../../lib/logger';
-import { useLogin } from '../../hooks/auth/useLogin';
-import ThemedText from '../../components/ui/ThemedText';
 import { navigate } from '../../navigations/navigationRef';
-import { storage } from '../../lib/storage';
+import { useLogin } from '../../hooks/auth/useAuthenticate';
+import { LoginSchema } from '../../types';
+import FieldError from '../../components/ErrorField';
+import { log } from '../../lib/logger';
+import AuthLayout from '../../layout/AuthLayout';
 
-
-
-
-
-const { width, height } = Dimensions.get("window")
-
+const { width, height } = Dimensions.get('window');
+const OLIVE = '#7a8c3f';
 
 export default function Login() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const { login } = useAuth();
+    const { mutate } = useLogin();
     const [showPassword, setShowPassword] = useState(false);
-    const { login } = useAuth()
-    const { mutate } = useLogin()
-    const keys = storage.getAllKeys();
-    const all = Object.fromEntries(keys.map(key => [key, storage.getString(key)]));
-    log.debug('[Storage] All keys: ' + JSON.stringify(all, null, 2));
 
-    const handleSubmi = (e: React.SubmitEvent) => {
-        e.preventDefault()
-        const payload = { email, password }
-        log.info(payload)
-        mutate(payload, {
-            onSuccess: (data) => {
-                login(data.data.accessToken, data.data.refreshToken)
+    // Manual State Management
+    const [formData, setFormData] = useState({ email: '', password: '' });
+    const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
+    const handleChange = (name: string, value: string) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+        // Clear error when user starts typing
+        if (errors[name as keyof typeof errors]) {
+            setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+    };
+
+    const onSubmit = () => {
+        // Manual Zod Validation
+        const result = LoginSchema.safeParse(formData);
+
+        if (!result.success) {
+            const formattedErrors: any = {};
+            result.error.issues.forEach((issue) => {
+                const path = issue.path[0];
+                if (path) formattedErrors[path] = issue.message;
+            });
+            setErrors(formattedErrors);
+            return;
+        }
+
+        log.debug('Validated Body:', result.data);
+
+        mutate(result.data, {
+            onSuccess: res => login(res.data.accessToken, res.data.refreshToken),
+            onError: err => {
+                setErrors({
+                    email: err.message,
+                    password: err.message,
+                });
             },
-            onError: (err) => log.error(err.message)
-
-        })
-    }
+        });
+    };
 
     return (
-        <ScrollView
-            contentContainerStyle={styles.container}
-            keyboardShouldPersistTaps="handled">
 
-            {/* Logo */}
-            <Image
-                source={require('./../../assets/images/app-logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-            />
-
-            {/* Header */}
-            <ThemedText style={styles.title}>Bienvenue !</ThemedText >
-            <Text style={styles.subtitle}>Connectez vous à votre espace personnel</Text>
-
-            {/* Form */}
+        <AuthLayout
+            title='Bienvenue !'
+            subTitle='Connectez-vous à votre espace personnel'
+        >
             <View style={styles.form}>
-
                 {/* Email */}
                 <Text style={styles.label}>Adresse e-mail</Text>
                 <View style={styles.inputWrapper}>
-                    <User size={18} />
+                    <Mail size={18} color="#888" style={styles.inputIcon} />
                     <TextInput
                         style={styles.input}
-                        placeholder="Exemple@email.com"
+                        placeholder="exemple@email.com"
                         placeholderTextColor="#aaa"
-                        value={email}
-                        onChangeText={setEmail}
+                        value={formData.email}
+                        onChangeText={(val) => handleChange('email', val)}
                         keyboardType="email-address"
                         autoCapitalize="none"
                     />
                 </View>
+                <FieldError message={errors.email} />
 
                 {/* Password */}
                 <Text style={styles.label}>Mot de passe</Text>
                 <View style={styles.inputWrapper}>
-                    <Lock size={18} />
+                    <Lock size={18} color="#888" style={styles.inputIcon} />
                     <TextInput
                         style={styles.input}
                         placeholder="•••••••••••••••"
                         placeholderTextColor="#aaa"
-                        value={password}
-                        onChangeText={setPassword}
+                        value={formData.password}
+                        onChangeText={(val) => handleChange('password', val)}
                         secureTextEntry={!showPassword}
                     />
                     <TouchableOpacity onPress={() => setShowPassword(p => !p)}>
-                        {showPassword ? <EyeOff size={18} /> :
-                            <Eye size={18} />
-                        }
-
+                        {showPassword ? (
+                            <EyeOff size={18} color="#aaa" />
+                        ) : (
+                            <Eye size={18} color="#aaa" />
+                        )}
                     </TouchableOpacity>
                 </View>
+                <FieldError message={errors.password} />
 
-                {/* Remember me + Forgot password */}
+                {/* Forgot password */}
                 <View style={styles.row}>
-
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => navigate('ResetPassword')}>
                         <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Login button */}
-                <TouchableOpacity style={styles.loginButton} onPress={handleSubmi}>
+                <TouchableOpacity
+                    style={styles.loginButton}
+                    onPress={onSubmit}
+                >
                     <Text style={styles.loginButtonText}>Se Connecter</Text>
                 </TouchableOpacity>
 
-                {/* Divider */}
+                {/* Divider & Social Buttons (Unchanged) */}
                 <View style={styles.divider}>
                     <View style={styles.dividerLine} />
                     <Text style={styles.dividerText}>ou</Text>
                     <View style={styles.dividerLine} />
                 </View>
 
-                {/* Social buttons */}
                 <View style={styles.socialRow}>
                     <TouchableOpacity style={styles.socialButton}>
-
-                        <Image source={require("./../../assets/images/icons/google.png")} style={styles.icons} />
+                        <Image
+                            source={require('./../../assets/images/icons/google.png')}
+                            style={styles.icons}
+                        />
                         <Text style={styles.socialText}>Google</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.socialButton}>
-                        <Image source={require("./../../assets/images/icons/facebook.png")} style={styles.icons} />
+                        <Image
+                            source={require('./../../assets/images/icons/facebook.png')}
+                            style={styles.icons}
+                        />
                         <Text style={styles.socialText}>Facebook</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Register */}
                 <View style={styles.registerRow}>
                     <Text style={styles.registerText}>Pas encore de compte ? </Text>
-                    <TouchableOpacity onPress={() => navigate("Register")}>
+                    <TouchableOpacity onPress={() => navigate('Register')}>
                         <Text style={styles.registerLink}>Créer un compte</Text>
                     </TouchableOpacity>
                 </View>
-
             </View>
-        </ScrollView>
+        </AuthLayout>
     );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const OLIVE = '#7a8c3f';
 
 const styles = StyleSheet.create({
     container: {
@@ -162,7 +170,7 @@ const styles = StyleSheet.create({
     },
     icons: {
         width: 15,
-        aspectRatio: 1
+        aspectRatio: 1,
     },
     logo: {
         width: width / 1.5,
@@ -183,8 +191,6 @@ const styles = StyleSheet.create({
     form: {
         width: '100%',
     },
-
-    // ── Inputs ──
     label: {
         fontSize: 14,
         fontWeight: '600',
@@ -198,55 +204,29 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         borderWidth: 1,
         borderColor: '#ddd',
-        marginBottom: 16,
+        marginBottom: 4,
         paddingHorizontal: 12,
+        height: 48,
     },
     inputIcon: {
-        marginRight: 8,
+        marginRight: 10,
     },
     input: {
         flex: 1,
-        height: 48,
         fontSize: 14,
         color: '#333',
     },
-
-    // ── Remember / Forgot ──
     row: {
         flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    checkboxRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    checkbox: {
-        width: 18,
-        height: 18,
-        borderRadius: 4,
-        borderWidth: 1.5,
-        borderColor: OLIVE,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkboxChecked: {
-        backgroundColor: OLIVE,
-        borderColor: OLIVE,
-    },
-    rememberText: {
-        fontSize: 13,
-        color: '#555',
+        justifyContent: 'flex-end',
+        marginBottom: 20,
+        marginTop: 8,
     },
     forgotText: {
         fontSize: 13,
         fontWeight: '700',
         color: '#333',
     },
-
-    // ── Login button ──
     loginButton: {
         backgroundColor: OLIVE,
         borderRadius: 10,
@@ -260,8 +240,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
-
-    // ── Divider ──
     divider: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -277,8 +255,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#aaa',
     },
-
-    // ── Social ──
     socialRow: {
         flexDirection: 'row',
         gap: 12,
@@ -300,8 +276,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#555',
     },
-
-    // ── Register ──
     registerRow: {
         flexDirection: 'row',
         justifyContent: 'center',

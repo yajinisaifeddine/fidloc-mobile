@@ -42,10 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const logout = useCallback(() => {
         // Targeted wipe of known auth keys
+        const refreshToken = storage.getString(REFRESH_TOKEN_KEY)
         storage.remove(TOKEN_KEY);
         storage.remove(REFRESH_TOKEN_KEY);
         storage.remove(USER_KEY);
 
+        apiClient.post("/auth/logout", { token: refreshToken });
         // Optional: Wipe the "dirty" orphan keys found in your debug log
         ['id', 'email', 'prenom', 'nom', '@auth_token'].forEach(key => storage.remove(key));
 
