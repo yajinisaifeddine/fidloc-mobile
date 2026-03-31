@@ -55,7 +55,10 @@ export const loginRequest = async (
 export const signUpRequest = async (
   payload: SignUpPayload,
 ): Promise<ApiResponse<SignUpRequestResponse>> => {
-  const { data } = await apiClient.post('/auth/sign-up', payload);
+  const { data } = await apiClient.post('/auth/sign-up', {
+    ...payload,
+    role: 'CLIENT',
+  });
   return data;
 };
 

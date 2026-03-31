@@ -1,18 +1,20 @@
+// components/ThemedText.tsx
 import React from 'react';
-import { Text, TextProps, useColorScheme } from 'react-native';
-import { useTheme } from '../../hooks/useTheme';
+import { Text, TextProps } from 'react-native';
+import { useColorScheme } from '../../hooks/useColorScheme';
+import { colors } from '../../theme/colors';
 
-const colors = {
-    light: { text: '#1a1a1a' },
-    dark: { text: '#f1f1f1' },
-};
+interface ThemedTextProps extends TextProps {
+    lightColor?: string;
+    darkColor?: string;
+}
 
-const ThemedText: React.FC<TextProps> = ({ style, ...props }) => {
-    const scheme = useTheme();
-    const theme = scheme === 'dark' ? 'dark' : 'light';
-    return (
-        <Text style={[{ color: colors[theme].text }, style]} {...props} />
-    );
-};
+export function ThemedText({ lightColor, darkColor, style, ...rest }: ThemedTextProps) {
+    const { scheme } = useColorScheme();
 
-export default ThemedText;
+    const color = scheme === 'dark'
+        ? (darkColor ?? colors.dark.text)
+        : (lightColor ?? colors.light.text);
+
+    return <Text style={[{ color }, style]} {...rest} />;
+}

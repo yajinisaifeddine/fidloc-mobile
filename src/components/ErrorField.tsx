@@ -1,13 +1,15 @@
 // components/ui/FieldError.tsx
 import React from 'react';
 import { Text, StyleSheet } from 'react-native';
+import { log } from '../lib/logger';
 
 interface Props {
     message?: string;
 }
 
 const FieldError = ({ message }: Props) => {
-    if (!message) return null;
+    log.debug("error message", message)
+    if (!message || message === "Network Error") return null;
     return <Text style={styles.error}>{message}</Text>;
 };
 

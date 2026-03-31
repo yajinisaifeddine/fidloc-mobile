@@ -1,11 +1,9 @@
-import { createContext, useContext, useEffect, useState, useMemo, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, ReactNode } from 'react';
 import { storage } from '../../lib/storage';
 import apiClient from '../../lib/api';
 import { jwtDecode } from 'jwt-decode';
 import { log } from '../../lib/logger';
-import { navigate } from '../../navigations/navigationRef';
 
-// --- Constants (Aligned with your Debug Log) ---
 const TOKEN_KEY = '@auth_access_token';
 const REFRESH_TOKEN_KEY = '@auth_refresh_token';
 const USER_KEY = '@auth_user';
@@ -15,13 +13,13 @@ type User = {
     email: string;
     nom: string;
     prenom: string;
+    profilePicture?: string
     [key: string]: any
 };
 
 type AuthState = {
     user: User | null;
     token: string | null;
-    isLoading: boolean;
     isAuthenticated: boolean;
 };
 
@@ -32,80 +30,53 @@ type AuthContextType = AuthState & {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const initAuthState = (): AuthState => {
+    try {
+        const token = storage.getString(TOKEN_KEY);
+        const userJson = storage.getString(USER_KEY);
+        if (token) {
+            return {
+                token,
+                user: userJson ? JSON.parse(userJson) : null,
+                isAuthenticated: true,
+            };
+        }
+    } catch (e) {
+        log.error("Failed to restore session", e);
+    }
+    return { user: null, token: null, isAuthenticated: false };
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [state, setState] = useState<AuthState>({
-        user: null,
-        token: null,
-        isLoading: true,
-        isAuthenticated: false,
-    });
+    const [state, setState] = useState<AuthState>(initAuthState);
 
     const logout = useCallback(() => {
-        // Targeted wipe of known auth keys
-        const refreshToken = storage.getString(REFRESH_TOKEN_KEY)
+        const refreshToken = storage.getString(REFRESH_TOKEN_KEY);
         storage.remove(TOKEN_KEY);
         storage.remove(REFRESH_TOKEN_KEY);
         storage.remove(USER_KEY);
-
-        apiClient.post("/auth/logout", { token: refreshToken });
-        // Optional: Wipe the "dirty" orphan keys found in your debug log
         ['id', 'email', 'prenom', 'nom', '@auth_token'].forEach(key => storage.remove(key));
 
-        setState({
-            user: null,
-            token: null,
-            isLoading: false,
-            isAuthenticated: false,
-        });
+        apiClient.post("/auth/logout", { token: refreshToken });
+
+        setState({ user: null, token: null, isAuthenticated: false });
     }, []);
-
-    useEffect(() => {
-        const initAuth = () => {
-            try {
-                const token = storage.getString(TOKEN_KEY);
-                const userJson = storage.getString(USER_KEY);
-
-                // TRUTH: If token exists, we are authenticated.
-                if (token) {
-                    setState({
-                        token,
-                        user: userJson ? JSON.parse(userJson) : null,
-                        isLoading: false,
-                        isAuthenticated: true,
-                    });
-                } else {
-                    setState(prev => ({ ...prev, isLoading: false, isAuthenticated: false }));
-                }
-            } catch (e) {
-                log.error("Failed to restore session", e);
-                logout();
-            }
-        };
-        initAuth();
-    }, [logout]);
 
     const login = useCallback(async (accessToken: string, refreshToken: string) => {
         try {
             const decoded: { sub: string } = jwtDecode(accessToken);
 
-            // Note: Update path to /users or /user based on your backend
             const res = await apiClient.get(`/users/${decoded.sub}`, {
                 headers: { Authorization: `Bearer ${accessToken}` }
             });
 
-            // Handle nesting (res.data.data vs res.data) based on your API response
             const userData = res.data.data || res.data;
 
             storage.set(TOKEN_KEY, accessToken);
             storage.set(REFRESH_TOKEN_KEY, refreshToken);
             storage.set(USER_KEY, JSON.stringify(userData));
 
-            setState({
-                user: userData,
-                token: accessToken,
-                isLoading: false,
-                isAuthenticated: true,
-            });
+            setState({ user: userData, token: accessToken, isAuthenticated: true });
         } catch (e) {
             log.error("Login failed", e);
             logout();

@@ -1,26 +1,28 @@
-import { View, StyleSheet, Image, Dimensions } from 'react-native'
+import { StyleSheet, Image, Dimensions } from 'react-native'
 import React from 'react'
+import { useColorScheme } from '../hooks/useColorScheme'
 
 const SplashScreen = () => {
+    const { scheme } = useColorScheme()
+    const splashLight = require('./../assets/images/splash-light.png');
+    const splashDark = require('./../assets/images/splash-dark.png');
     return (
-        <View style={styles.container}>
-            <Image
-                source={require('./../assets/images/app-logo.png')}
-                style={styles.image}
-                resizeMode="contain"
-            />
-        </View>
+
+        <Image
+            source={scheme === 'dark' ? splashDark : splashLight}
+            style={styles.image}
+            resizeMode="cover"
+        />
+
     )
 }
 const { width, height } = Dimensions.get("window")
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: "center", alignItems: "center"
-    },
     image: {
-        width: width / 2,
-        height: height / 3
+        padding: 0,
+        margin: 0,
+        width,
+        height
     }
 })
 
